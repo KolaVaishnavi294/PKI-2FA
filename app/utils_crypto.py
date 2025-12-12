@@ -7,13 +7,16 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
+PRIVATE_KEY_PATH = "/app/student_private.pem"
+
+
 # -----------------------------
 #  Decrypt Seed
 # -----------------------------
-def decrypt_seed(private_key_path: str, encrypted_seed_b64: str) -> str:
+def decrypt_seed(encrypted_seed_b64: str) -> str:
     """Decrypt encrypted seed using student's private key."""
 
-    with open(private_key_path, "rb") as key_file:
+    with open(PRIVATE_KEY_PATH, "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
             password=None,
