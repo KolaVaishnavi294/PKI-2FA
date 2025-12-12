@@ -1,17 +1,60 @@
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
 import base64
 import time
 import hmac
 import hashlib
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
 
 PRIVATE_KEY_PATH = "/app/student_private.pem"
+PUBLIC_KEY_PATH = "/app/student_public.pem"
+INSTRUCTOR_PUBLIC_KEY_PATH = "/app/instructor_public.pem"
 
+# -------------------------------------------------
+# Load Keys
+# -------------------------------------------------
+def load_private_key():
+    with open(PRIVATE_KEY_PATH, "rb") as f:
+        return serialization.load_pem_private_key(f.read(), password=None)
+
+def load_public_key():
+    with open(PUBLIC_KEY_PATH, "rb") as f:
+        return serialization.load_pem_public_key(f.read())
+
+def load_instructor_public_key():
+    with open(INSTRUCTOR_PUBLIC_KEY_PATH, "rb") as f:
+        return serialization.load_pem_public_key(f.read())
+
+# -------------------------------------------------
+# RSA Encryption / Signing
+# -------------------------------------------------
+def encrypt_with_public_key(public_key, message: bytes) -> str:
+    encrypted = public_key.encrypt(
+        message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    return base64.b64encode(encrypted).decode()
+
+def sign_message_rsa_pss(private_key, message: bytes) -> str:
+    signature = private_key.sign(
+        message,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256(),
+    )
+    return base64.b64encode(signature).decode()
+
+# -------------------------------------------------
+# Decrypt Seed
+# -------------------------------------------------
 def decrypt_seed(encrypted_seed_b64: str) -> str:
-    with open(PRIVATE_KEY_PATH, "rb") as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(), password=None
-        )
+    private_key = load_private_key()
 
     encrypted_bytes = base64.b64decode(encrypted_seed_b64)
 
@@ -23,9 +66,11 @@ def decrypt_seed(encrypted_seed_b64: str) -> str:
             label=None,
         ),
     )
-
     return seed.decode()
 
+# -------------------------------------------------
+# 2FA Code Generation
+# -------------------------------------------------
 def generate_2fa_code(seed: str) -> str:
     timestep = int(time.time() // 30)
     msg = f"{seed}:{timestep}".encode()
@@ -33,5 +78,8 @@ def generate_2fa_code(seed: str) -> str:
     code = hmac.new(seed.encode(), msg, hashlib.sha256).hexdigest()
     return str(int(code[:6], 16)).zfill(6)
 
+# -------------------------------------------------
+# Verify 2FA Code
+# -------------------------------------------------
 def verify_2fa_code(seed: str, code: str) -> bool:
     return generate_2fa_code(seed) == code
