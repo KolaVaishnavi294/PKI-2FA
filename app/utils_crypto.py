@@ -49,10 +49,10 @@ def decrypt_seed(encrypted_seed_b64: str) -> str:
 # -----------------------------
 #  RSA-PSS SIGN
 # -----------------------------
-def sign_message_rsa_pss(private_key, message: bytes) -> str:
-    """Sign message using RSA-PSS + SHA256. Message must already be bytes."""
+def sign_message_rsa_pss(private_key, message_bytes: bytes) -> str:
+    """Sign message using RSA-PSS + SHA256. Message must be bytes."""
     signature = private_key.sign(
-        message,  # message already bytes (important fix!)
+        message_bytes,
         padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()),
             salt_length=padding.PSS.MAX_LENGTH,
@@ -65,10 +65,10 @@ def sign_message_rsa_pss(private_key, message: bytes) -> str:
 # -----------------------------
 #  RSA ENCRYPT WITH PUBLIC KEY
 # -----------------------------
-def encrypt_with_public_key(public_key, message: str) -> str:
-    """Encrypt a message with a public key using RSA-OAEP."""
+def encrypt_with_public_key(public_key, message_bytes: bytes) -> str:
+    """Encrypt bytes with public RSA key using OAEP."""
     encrypted = public_key.encrypt(
-        message.encode(),
+        message_bytes,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
