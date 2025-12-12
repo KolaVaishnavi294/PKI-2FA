@@ -25,10 +25,10 @@ def load_public_key(path: str):
 
 
 # -----------------------------
-#  Decrypt Seed
+#  Decrypt Seed (API)
 # -----------------------------
 def decrypt_seed(encrypted_seed_b64: str) -> str:
-    """Decrypt seed using student's private key."""
+    """Decrypt seed using student's private key inside container."""
     PRIVATE_KEY_PATH = "/app/student_private.pem"
 
     private_key = load_private_key(PRIVATE_KEY_PATH)
@@ -47,10 +47,10 @@ def decrypt_seed(encrypted_seed_b64: str) -> str:
 
 
 # -----------------------------
-#  RSA-PSS SIGN
+#  RSA-PSS SIGN (for prove_commit.py)
 # -----------------------------
 def sign_message_rsa_pss(private_key, message_bytes: bytes) -> str:
-    """Sign message using RSA-PSS + SHA256. Message must be bytes."""
+    """Sign message using RSA-PSS + SHA256, return Base64 string."""
     signature = private_key.sign(
         message_bytes,
         padding.PSS(
@@ -65,24 +65,27 @@ def sign_message_rsa_pss(private_key, message_bytes: bytes) -> str:
 # -----------------------------
 #  RSA ENCRYPT WITH PUBLIC KEY
 # -----------------------------
-def encrypt_with_public_key(public_key, message_bytes: bytes) -> str:
-    """Encrypt bytes with public RSA key using OAEP."""
+def encrypt_with_public_key(public_key, message: str) -> str:
+    """Encrypt message using RSA-OAEP. Input is string → encrypt as bytes."""
+    if isinstance(message, str):
+        message = message.encode()   # <-- FIX ADDED HERE
+
     encrypted = public_key.encrypt(
-        message_bytes,
+        message,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None,
         ),
     )
+
     return base64.b64encode(encrypted).decode()
 
 
 # -----------------------------
-#  2FA GENERATION (TOTP-Like)
+#  2FA GENERATION
 # -----------------------------
 def generate_2fa_code(seed: str) -> str:
-    """Generate a 6-digit TOTP-style code using HMAC-SHA256."""
     timestep = int(time.time() // 30)
     msg = f"{seed}:{timestep}".encode()
 
@@ -91,9 +94,8 @@ def generate_2fa_code(seed: str) -> str:
 
 
 # -----------------------------
-#  2FA VERIFY
+#  VERIFY 2FA CODE
 # -----------------------------
 def verify_2fa_code(seed: str, code: str) -> bool:
-    """Verify a submitted 2FA code."""
     expected = generate_2fa_code(seed)
     return expected == code
