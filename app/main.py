@@ -8,6 +8,7 @@ class SeedRequest(BaseModel):
     encrypted_seed: str
 
 class VerifyRequest(BaseModel):
+    seed: str
     code: str
 
 @app.get("/")
@@ -23,9 +24,9 @@ def decrypt_seed_endpoint(req: SeedRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/generate-2fa")
-def generate_endpoint():
+def generate_endpoint(seed: str):
     try:
-        code = generate_2fa_code()
+        code = generate_2fa_code(seed)
         return {"code": code}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -33,7 +34,6 @@ def generate_endpoint():
 @app.post("/verify-2fa")
 def verify_endpoint(req: VerifyRequest):
     try:
-        result = verify_2fa_code(req.code)
-        return {"valid": result}
+        return {"valid": verify_2fa_code(req.seed, req.code)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
