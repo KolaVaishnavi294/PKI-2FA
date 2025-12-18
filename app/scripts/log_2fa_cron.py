@@ -1,8 +1,5 @@
-import sys
 import os
 from datetime import datetime
-
-sys.path.append("/app")
 
 from utils_crypto import generate_2fa_code
 
