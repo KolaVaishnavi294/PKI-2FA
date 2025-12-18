@@ -21,12 +21,13 @@ def load_public_key(path: str):
 # -----------------------------
 def decrypt_seed(encrypted_seed_b64: str) -> str:
     private_key = load_private_key("/app/student_private.pem")
-    ciphertext = base64.b64decode(encrypted_seed_b64)
+
+    encrypted_bytes = base64.b64decode(encrypted_seed_b64)
 
     seed = private_key.decrypt(
-        ciphertext,
+        encrypted_bytes,
         padding.OAEP(
-            mgf=padding.MGF1(hashes.SHA256()),
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None,
         ),
@@ -34,7 +35,7 @@ def decrypt_seed(encrypted_seed_b64: str) -> str:
     return seed.decode()
 
 # -----------------------------
-# RSA-PSS SIGN
+# RSA Sign Commit
 # -----------------------------
 def sign_message_rsa_pss(private_key, message: bytes) -> str:
     signature = private_key.sign(
@@ -48,13 +49,13 @@ def sign_message_rsa_pss(private_key, message: bytes) -> str:
     return base64.b64encode(signature).decode()
 
 # -----------------------------
-# RSA ENCRYPT
+# Encrypt with Public Key
 # -----------------------------
 def encrypt_with_public_key(public_key, message: bytes) -> str:
     encrypted = public_key.encrypt(
         message,
         padding.OAEP(
-            mgf=padding.MGF1(hashes.SHA256()),
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None,
         ),
@@ -62,13 +63,16 @@ def encrypt_with_public_key(public_key, message: bytes) -> str:
     return base64.b64encode(encrypted).decode()
 
 # -----------------------------
-# 2FA
+# 2FA Generation
 # -----------------------------
 def generate_2fa_code(seed: str) -> str:
     timestep = int(time.time() // 30)
     msg = f"{seed}:{timestep}".encode()
-    code = hmac.new(seed.encode(), msg, hashlib.sha256).hexdigest()
-    return str(int(code[:6], 16)).zfill(6)
+    h = hmac.new(seed.encode(), msg, hashlib.sha256).hexdigest()
+    return str(int(h[:6], 16)).zfill(6)
 
+# -----------------------------
+# 2FA Verify
+# -----------------------------
 def verify_2fa_code(seed: str, code: str) -> bool:
     return generate_2fa_code(seed) == code
